@@ -1,0 +1,148 @@
+﻿    .wv_QuickDialog 
+    {
+        background-color: floralwhite;
+        position: absolute;
+        padding: 8px;
+        left: 100px;
+        top: 100px;
+        box-shadow: 0 2px 4px 0 rgba(0,0,0,0.3);
+        border-radius: 4px;
+        min-width: 200px;
+        max-width: 350px;
+        border: 1px solid silver;
+        display: none;
+    }
+
+    .wv_QuickDialog_Header
+    {
+        font-size: 1.1em;
+        margin-top: 8px;
+        font-weight: bold;
+        text-align: center;
+    }
+
+    .wv_QuickDialog_Caption
+    {
+        margin-top: 8px;
+        font-weight: bold;
+        font-size: 0.8em;
+    }
+
+    .wv_QuickDialog_Label
+    {
+        font-weight: normal;
+        font-size: 0.8em;
+        margin-top: 8px;
+        margin-bottom: 8px;
+    }
+
+    .wv_QuickDialog_Button
+    {
+        display: inline-block;
+        margin-top: 4px;
+        font-size: 80%;
+    }
+
+    .wv_QuickDialog table 
+    {
+        border: solid 1px #eeeeee;
+        border-collapse: collapse;
+        border-spacing: 0;
+        width: 100%;
+    }
+
+    .wv_QuickDialog thead th 
+    {
+        background-color: #eeeeee;
+        border: solid 1px #eeeeee;
+        color: darkgray;
+        padding: 10px;
+        text-align: left;
+        cursor: pointer;
+    }
+
+    .wv_QuickDialog tbody td 
+    {
+        border: solid 1px #eeeeee;
+        color: #333;
+        padding: 4px;
+    }
+
+    .wv_QuickPanel
+    {
+        background-color: white;
+        position: absolute;
+        padding: 8px;
+        left: 100px;
+        top: 100px;
+        box-shadow: 0 2px 4px 0 rgba(0,0,0,0.3);
+        border-radius: 4px;
+        border: 1px solid silver;
+        display: none;
+        cursor: default;
+    }
+
+    .wv_QuickPanel_Caption
+    {
+        padding: 6px;
+        background-color: lightblue;
+        color: black;
+        cursor: move;
+        position: absolute;
+        top: 0px;
+        left: 0px;
+        right: 0px;
+    }
+
+    .wv_QuickSelect
+    {
+        background-color: white;
+        position: absolute;
+        padding: 8px;
+        left: 100px;
+        top: 100px;
+        box-shadow: 0 2px 4px 0 rgba(0,0,0,0.3);
+        border-radius: 4px;
+        border: 1px solid silver;
+        display: none;
+        cursor: default;
+        max-height: 500px;
+        overflow: auto;
+    }
+    .wv_QuickSelect_Folder
+    {
+        cursor:pointer;
+        font-weight: bold;
+    }
+
+    .wv_QuickSelect_Folder:hover
+    {
+    }
+
+
+    .wv_QuickSelect_Item
+    {
+        cursor:pointer;
+        font-weight: normal;
+        clear:both;
+    }
+
+    .wv_QuickSelect_Item:hover
+    {
+    }
+ 
+    .wv_QuickSelect_Folder >.wv_QuickSelect_Item
+    {
+        margin-left: 64px;
+    }
+
+
+    .wv_QuickSelect_Text
+    {
+        font-size: 90%;
+    }
+
+    .wv_QuickSelect_Text:hover
+    {
+        background-color: lightblue;
+    }

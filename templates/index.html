@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>KrimmiDB</title>
+    <script src="/static/jquery.js"></script>
+    <script src="/static/wv_jquery.js?v=3"></script>
+    <link rel="stylesheet" type="text/css" href="/static/wv_jquery.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.6.0/dist/leaflet.css" integrity="sha512-xwE/Az9zrjBIphAcBb3F6JVqxf46+CDLwfLMHloNu6KEQCAWi6HcDUbeOfBIptF7tcCzusKFjFw2yuvEpDL9wQ==" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.6.0/dist/leaflet.js"
+   integrity="sha512-gZwIG9x3wUXg2hdXF6+rVkLF/0Vi9U8D2Ntg4Ga5I5BZpVkVxlJWbSQtXPSiUTtC0TjtGOmxa1AJPuV0CPthew=="
+   crossorigin=""></script>
+
+    <style>
+        body{
+            font-family:Arial;
+        }
+
+        .editable_text {
+            padding: 4px;
+            cursor:pointer;
+            display:inline-block;
+        }
+
+        .editable_text:focus {
+            background-color: lightgoldenrodyellow;
+        }
+
+        .editable_help {
+            padding: 4px;
+            cursor:pointer;
+            display:inline-block;
+            color: darkgray;
+        }
+
+        .editable_help:focus {
+            background-color: lightgoldenrodyellow;
+        }
+
+        .editable_solution {
+            padding: 4px;
+            cursor:pointer;
+            display:inline-block;
+        }
+
+        .editable_solution:focus {
+            background-color: lightgoldenrodyellow;
+        }
+
+        .editable_description {
+            padding: 4px;
+            cursor:pointer;
+            display:inline-block;
+        }
+
+        .editable_description:focus {
+            background-color: lightgoldenrodyellow;
+        }
+
+        .IceList {
+        }
+
+        .IceItem {
+        }
+
+        .IceItemName {
+            cursor: pointer;
+            margin-right: 8px;
+        }
+
+        .IceItemNameBadge {
+            cursor: pointer;
+            margin-right: 8px;
+            background-color: orange;
+            color: black;
+            padding: 2px;
+        }
+
+        .IceButton {
+            cursor:pointer;
+            border-radius:4px;
+            display: inline-block;
+            color: white;
+            font-weight: bold;
+            text-align: center;
+            padding: 4px;
+            float:left;
+            margin-right:2px;
+        }
+
+        .IceBadge {
+            padding: 1px 4px;
+            font-size: 90%;
+            background-color: darkorange;
+            color: white;
+            display: inline-block;
+            text-align: center;
+            font-weight: bold;
+            border-radius: 4px;
+            margin-left: 4px;
+            margin-right: 4px;
+        }
+
+        .IceOpenChapters {
+            cursor: pointer;
+            margin-left: 16px;
+            font-weight: bold;
+        }
+
+        .wv_FlatButton {
+            cursor: pointer;
+            padding: 4px;
+            background-color: limegreen;
+            color: white;
+            display: inline-block;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .IceRefresh { background-color: green; }
+        .IceGoBack { background-color: orange; }
+        .IceSingle { background-color: darkcyan; }
+        .IceNewBook { background-color: green; }
+        .IceWorldMap { background-color: green; }
+        .IceNewChapter { background-color: green; }
+        .IceCopyBook { background-color: green; }
+        .IceExport { background-color: green; }
+        .IceDump { background-color: green; }
+        .IceActors { background-color: green; }
+        .IceFetch { background-color: green; }
+
+        .IceSearchField {
+            width: 150px;
+            padding: 4px;
+            float: left;
+            margin-right: 2px;
+        }
+
+        .IceSearch { background-color: green; }
+
+        .WorldTree {
+            position: absolute;
+            height: 400px;
+            top: 64px;
+            right: 12px;
+            border: 1px solid silver;
+            font-size: 90%;
+            padding: 4px;
+        }
+
+        .WorldMap {
+            position: absolute;
+            height: 400px;
+            bottom: 12px;
+            left: 12px;
+            right: 12px;
+        }
+    </style>
+
+    <script type="text/javascript">
+
+        var idMap = null;
+        var idTree = null;
+        var layerMakers = null;
+
+        function escapeRegExp(string) {
+            return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
+        function replaceAll(str, find, replace) {
+            return str.replace(new RegExp(escapeRegExp(find), 'g'), replace);
+        }
+
+        // ── Adapted AsyncCallServer for Flask API ──────────────────────────
+        function AsyncCallServer(inMethod, inParameters, inDone) {
+            var routeMap = {
+                'GetBooks':             { url: '/api/books',                                    method: 'GET' },
+                'GetSingleBook':        { url: '/api/books/' + (inParameters.inID || ''),       method: 'GET' },
+                'GetChapters':          { url: '/api/chapters/' + (inParameters.inBookID != null ? inParameters.inBookID : ''), method: 'GET' },
+                'InsertUpdateBook':     { url: '/api/books',                                    method: 'POST' },
+                'InsertUpdateChapter':  { url: '/api/chapters',                                 method: 'POST' },
+                'CopyBook':             { url: '/api/books/' + (inParameters.inID || '') + '/copy', method: 'POST' },
+                'UpdateChapterText':    { url: '/api/chapters/' + (inParameters.id || '') + '/text', method: 'PUT' },
+                'UpdateChapterHelp':    { url: '/api/chapters/' + (inParameters.id || '') + '/help', method: 'PUT' },
+                'UpdateBookSolution':   { url: '/api/books/' + (inParameters.id || '') + '/solution', method: 'PUT' },
+                'UpdateBookDescription':{ url: '/api/books/' + (inParameters.id || '') + '/description', method: 'PUT' },
+                'Export':               { url: '/api/export',                                   method: 'GET' }
+            };
+
+            var route = routeMap[inMethod];
+            if (!route) {
+                console.error("Unknown method: " + inMethod);
+                return;
+            }
+
+            var opts = {
+                type: route.method,
+                contentType: 'application/json; charset=utf-8',
+                dataType: 'json',
+                async: true,
+                cache: false,
+                url: route.url,
+                success: function(data) {
+                    // Wrap in {d: JSON.stringify(data)} to match ASP.NET WebMethod format
+                    inDone({ d: JSON.stringify(data) });
+                }
+            };
+
+            if (route.method !== 'GET') {
+                opts.data = JSON.stringify(inParameters);
+            }
+
+            jQuery.ajax(opts);
+        }
+
+        // ── Tree display ───────────────────────────────────────────────────
+        function _getTreeNode(inNodes, inID) {
+            for (let i = 0; i < inNodes.length; i++) {
+                if (inNodes[i].chapterid == inID)
+                    return inNodes[i];
+            }
+            return null;
+        }
+
+        function doDisplayTree(inChapters) {
+            if (inChapters.length < 1)
+                return;
+            let aNodes = [];
+            for (let i = 0; i < inChapters.length; i++) {
+                let oChapter = inChapters[i];
+                if (!oChapter.location && !oChapter.flagsneeded) {
+                    aNodes.push({ level: 0, chapterid: oChapter.chapterid, flagsneeded: null, caption: oChapter.caption });
+                    break;
+                }
+            }
+
+            let iFailsafe = 20;
+            while (aNodes.length < inChapters.length && iFailsafe-- > 0) {
+                for (let i = 0; i < inChapters.length; i++) {
+                    let oChapter = inChapters[i];
+                    if (_getTreeNode(aNodes, oChapter.chapterid))
+                        continue;
+                    let oParentNode = _getTreeNode(aNodes, oChapter.flagsneeded);
+                    if (!oParentNode) {
+                        continue;
+                    }
+                    aNodes.push({ level: parseInt(oParentNode.level) + 1, chapterid: oChapter.chapterid, flagsneeded: oChapter.flagsneeded, caption: oChapter.caption });
+                }
+            }
+
+            let eTree = $(".WorldTree");
+            eTree.empty();
+            for (let i = 0; i < aNodes.length; i++) {
+                let eParent = eTree.find("[data-chapterid='" + aNodes[i].flagsneeded + "']");
+                if (eParent.length < 1) {
+                    eTree.append("<ul><li data-chapterid='" + aNodes[i].chapterid + "'>" + aNodes[i].caption + "</li></ul>");
+                } else {
+                    eParent.append("<ul><li data-chapterid='" + aNodes[i].chapterid + "'>" + aNodes[i].caption + "</li></ul>");
+                }
+            }
+        }
+
+        // ── Map display ────────────────────────────────────────────────────
+        function doMarkerClick(m) {
+            let eContent = QuickPanel(m.target.options.caption, $("#mapid"), { width: '400px', left: "200px", top: "200px" });
+            eContent.html(m.target.options.caption);
+        }
+
+        function doDisplayMap(inLat, inLon, inChapters) {
+            $("#mapid").show();
+            idMap = L.map('mapid').setView({ lat: inLat, lon: inLon }, 14);
+            var osmUrl = 'https://{s}.tile.osm.org/{z}/{x}/{y}.png',
+                osmAttrib = '&copy; <a href="http://openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                osm = L.tileLayer(osmUrl, {
+                    maxZoom: 18,
+                    minZoom: 1,
+                    attribution: osmAttrib,
+                    zoomOffset: -1,
+                    tileSize: 512
+                });
+            idMap.addLayer(osm);
+            layerMarkers = L.layerGroup().addTo(idMap);
+
+            idMap.on('click', function (e) {
+                alert("Lat, Lon : " + e.latlng.lat + ", " + e.latlng.lng);
+            });
+
+            for (let i = 0; i < inChapters.length; i++) {
+                let oItem = inChapters[i];
+                let gps = oItem.locationgps;
+                if (!gps)
+                    continue;
+                let lon = parseFloat(gps.split(',')[1]);
+                let lat = parseFloat(gps.split(',')[0]);
+                let delta = oItem.locationdelta;
+                L.circle([lat, lon], { radius: delta, caption: oItem.id + " - " + oItem.caption }).on('click', doMarkerClick).addTo(idMap);
+            }
+        }
+
+        // ── Book dialog ────────────────────────────────────────────────────
+        function doInsertUpdateBook(inElement, inBook) {
+            QuickDialog(inElement,
+                { Caption: "Skr\u00e1 b\u00f3k", minWidth: '600px' },
+                {
+                    id: inBook.id ? inBook.id : '',
+                    bookid: inBook.bookid ? inBook.bookid : '',
+                    caption: inBook.caption ? inBook.caption : '',
+                    author: inBook.author ? inBook.author : '',
+                    language: inBook.language ? inBook.language : 'IS',
+                    location: inBook.location ? inBook.location : '',
+                    locationgps: inBook.locationgps ? inBook.locationgps : '',
+                    cover: inBook.cover ? inBook.cover : '',
+                    difficulty: inBook.difficulty ? inBook.difficulty : '1',
+                    question1: inBook.question1 ? inBook.question1 : '',
+                    question2: inBook.question2 ? inBook.question2 : '',
+                    question3: inBook.question3 ? inBook.question3 : '',
+                    answer1: inBook.answer1 ? inBook.answer1 : '',
+                    answer2: inBook.answer2 ? inBook.answer2 : '',
+                    answer3: inBook.answer3 ? inBook.answer3 : '',
+                    congratulations: inBook.congratulations ? inBook.congratulations : '',
+                    description: inBook.description ? inBook.description : '',
+                    music: inBook.music ? inBook.music : '',
+                    helpcaption: inBook.helpcaption ? inBook.helpcaption : ''
+                },
+                [
+                    { Caption: 'ID', id: 'id', PropertyType: 'String' },
+                    { Caption: 'BookID', id: 'bookid', PropertyType: 'String' },
+                    { Caption: 'Heiti', id: 'caption', PropertyType: 'String' },
+                    { Caption: 'H\u00f6fundur', id: 'author', PropertyType: 'String' },
+                    { Caption: 'Tungum\u00e1l', id: 'language', PropertyType: 'Select', Values: 'IS;EN;DE;FR', Texts: '\u00cdslenska;Enska;\u00de\u00fdska;Franska' },
+                    { Caption: 'L\u00fdsing', id: 'description', PropertyType: 'Text', maxlength: 4000 },
+                    { Caption: 'Sta\u00f0setning', id: 'location', PropertyType: 'String' },
+                    { Caption: 'Sta\u00f0setning (lat,lon)', id: 'locationgps', PropertyType: 'String' },
+                    { Caption: 'Erfi\u00f0leikastig', id: 'difficulty', PropertyType: 'Select', Values: '1;2;3;4', Texts: 'Byrjandi;L\u00e9tt;Me\u00f0al;Erfi\u00f0' },
+                    { Caption: 'Spurning 1', id: 'question1', PropertyType: 'String' },
+                    { Caption: 'Spurning 2', id: 'question2', PropertyType: 'String' },
+                    { Caption: 'Spurning 3', id: 'question3', PropertyType: 'String' },
+                    { Caption: 'Svar 1', id: 'answer1', PropertyType: 'String' },
+                    { Caption: 'Svar 2', id: 'answer2', PropertyType: 'String' },
+                    { Caption: 'Svar 3', id: 'answer3', PropertyType: 'String' },
+                    { Caption: '\u00deegar b\u00f3k er leyst', id: 'congratulations', PropertyType: 'Text', maxlength: 4000 },
+                    { Caption: 'T\u00f3nlist', id: 'music', PropertyType: 'Select', Values: ';Blood Money;Sneaky;Solving;Suspense;Undercover;Unsolved', Texts: 'Engin;Blood Money;Sneaky;Solving;Suspense;Undercover;Unsolved' },
+                    { Caption: 'K\u00e1pa', id: 'cover', PropertyType: 'String' },
+                    { Caption: 'Texti \u00e1 hj\u00e1lpartakka', id: 'helpcaption', PropertyType: 'String' }
+                ],
+                function (inObject) {
+                    if (inObject.bookid && inObject.caption && inObject.author) {
+                        AsyncCallServer("InsertUpdateBook", {
+                            id: inObject.id, bookid: inObject.bookid, caption: inObject.caption, author: inObject.author,
+                            language: inObject.language, description: inObject.description, location: inObject.location,
+                            locationgps: inObject.locationgps, difficulty: inObject.difficulty,
+                            question1: inObject.question1, question2: inObject.question2, question3: inObject.question3,
+                            answer1: inObject.answer1, answer2: inObject.answer2, answer3: inObject.answer3,
+                            congratulations: inObject.congratulations, music: inObject.music, cover: inObject.cover, helpcaption: inObject.helpcaption
+                        }, function () {
+                            location.reload(true);
+                        });
+                    } else {
+                        return "Ekki allt skr\u00e1\u00f0";
+                    }
+                    return true;
+                }
+            );
+        }
+
+        // ── Chapter dialog ─────────────────────────────────────────────────
+        function doInsertUpdateChapter(inElement, inChapter) {
+            AsyncCallServer("GetChapters", { inBookID: inChapter.parentid }, function (inBook) {
+                let aChapters = JSON.parse(inBook.d).Chapters;
+
+                let sChapterText = "";
+                let sChapterID = "";
+                for (let i = 0; i < aChapters.length; i++) {
+                    let oChapter = aChapters[i];
+                    sChapterText += ";" + oChapter.caption;
+                    sChapterID += ";" + oChapter.chapterid;
+                }
+                if (inChapter.caption)
+                    inChapter.caption = inChapter.caption.replace("\'", "&apos;");
+                QuickDialog(inElement,
+                    { Caption: "Skr\u00e1 kafla", minWidth: '600px' },
+                    {
+                        id: inChapter.id ? inChapter.id : '',
+                        parentid: inChapter.parentid,
+                        chapterid: inChapter.chapterid ? inChapter.chapterid : '',
+                        caption: inChapter.caption ? inChapter.caption : '',
+                        flagsneeded: inChapter.flagsneeded ? inChapter.flagsneeded : '',
+                        flagsnotallowed: inChapter.flagsnotallowed ? inChapter.flagsnotallowed : '',
+                        locationtype: inChapter.locationtype ? inChapter.locationtype : '',
+                        locationdelta: inChapter.locationdelta ? inChapter.locationdelta : '',
+                        locationgps: inChapter.locationgps ? inChapter.locationgps : '',
+                        music: inChapter.music ? inChapter.music : '',
+                        pretext: inChapter.pretext ? inChapter.pretext : '',
+                        experience: inChapter.experience ? inChapter.experience : '',
+                        helptext: inChapter.helptext ? inChapter.helptext : ''
+                    },
+                    [
+                        { Caption: 'ID', id: 'id', PropertyType: 'String' },
+                        { Caption: 'ChapterID', id: 'chapterid', PropertyType: 'String' },
+                        { Caption: 'Titill', id: 'caption', PropertyType: 'String' },
+                        { Caption: 'Birtingarskilyr\u00f0i', id: 'flagsneeded', PropertyType: 'Select', Values: sChapterID, Texts: sChapterText },
+                        { Caption: 'Ekki Birtingarskilyr\u00f0i', id: 'flagsnotallowed', PropertyType: 'Select', Values: sChapterID, Texts: sChapterText },
+                        { Caption: 'Tegund sta\u00f0setningar', id: 'locationtype', PropertyType: 'Select', Values: ';Police;Initial', Texts: 'Venjuleg;L\u00f6gregla;Upphafs' },
+                        { Caption: 'Sta\u00f0setning (lat,lon)', id: 'locationgps', PropertyType: 'String' },
+                        { Caption: 'Vikm\u00f6rk', id: 'locationdelta', PropertyType: 'String' },
+                        { Caption: 'Texti', id: 'pretext', PropertyType: 'Text', maxlength: 4000, rows: 10 },
+                        { Caption: 'T\u00f3nlist', id: 'music', PropertyType: 'Select', Values: ';Blood Money;Sneaky;Solving;Suspense;Undercover;Unsolved', Texts: 'Engin;Blood Money;Sneaky;Solving;Suspense;Undercover;Unsolved' },
+                        { Caption: 'AR M\u00f3del', id: 'experience', PropertyType: 'String' },
+                        { Caption: 'Hj\u00e1lpartexti', id: 'helptext', PropertyType: 'Text', maxlength: 4000, rows: 3 }
+                    ],
+                    function (inObject) {
+                        if (inObject.chapterid && inObject.caption && inObject.pretext) {
+                            AsyncCallServer("InsertUpdateChapter", {
+                                id: inObject.id, parentid: inObject.parentid, chapterid: inObject.chapterid, caption: inObject.caption,
+                                flagsneeded: inObject.flagsneeded, flagsnotallowed: inObject.flagsnotallowed,
+                                locationtype: inObject.locationtype, locationgps: inObject.locationgps, locationdelta: inObject.locationdelta,
+                                pretext: inObject.pretext, music: inObject.music, experience: inObject.experience, helptext: inObject.helptext
+                            }, function () {
+                                location.reload(true);
+                            });
+                        } else {
+                            return "Ekki allt skr\u00e1\u00f0";
+                        }
+                        return true;
+                    });
+            });
+        }
+
+        // ── Dump / Review panel ────────────────────────────────────────────
+        function doDump(inBook) {
+            AsyncCallServer("GetSingleBook", { inID: inBook }, function (inBookData) {
+                AsyncCallServer("GetChapters", { inBookID: inBook }, function (inChapterData) {
+                    let oBook = JSON.parse(inBookData.d).Book[0];
+                    let oChapters = JSON.parse(inChapterData.d).Chapters;
+
+                    let eContent = QuickPanel(oBook.caption, null, { width: '80%', left: "100px", top: "100px", maxHeight: "500px" });
+                    eContent.html("<h2>" + oBook.caption + "</h2>");
+                    oBook.description = replaceAll(oBook.description || '', "\n", "<br>");
+                    eContent.append("<div contenteditable='true' class='editable_description' data-id='" + oBook.id + "'>" + oBook.description + "</div>");
+                    for (let i = 0; i < oChapters.length; i++) {
+                        let oChapter = oChapters[i];
+                        eContent.append("<p></p><hr><p></p><h4>" + oChapter.caption + "</h4>");
+                        let sText = oChapter.pretext || '';
+                        sText = replaceAll(sText, "\n", "<br>");
+                        eContent.append("<div contenteditable='true' class='editable_text' data-chaptertitle='" + oChapter.caption + "' data-id='" + oChapter.id + "'>" + sText + "</div>");
+                        let sHelp = oChapter.helptext || '';
+                        sHelp = replaceAll(sHelp, "\n", "<br>");
+                        eContent.append("<div style='clear:both'></div>");
+                        eContent.append("<div contenteditable='true' class='editable_help' data-id='" + oChapter.id + "'>" + sHelp + "</div>");
+                    }
+                    eContent.append("<h3>Questions and answers</h3>");
+                    eContent.append("<div style='padding: 4px'><b>" + (oBook.question1 || '') + "</b></div>");
+                    eContent.append("<div style='padding: 4px'>" + (oBook.answer1 || '') + "</div>");
+                    eContent.append("<div style='padding: 4px'><b>" + (oBook.question2 || '') + "</b></div>");
+                    eContent.append("<div style='padding: 4px'>" + (oBook.answer2 || '') + "</div>");
+                    eContent.append("<div style='padding: 4px'><b>" + (oBook.question3 || '') + "</b></div>");
+                    eContent.append("<div style='padding: 4px'>" + (oBook.answer3 || '') + "</div>");
+
+                    eContent.append("<h3>Help caption</h3>");
+                    eContent.append("<div style='padding: 4px'>" + (oBook.helpcaption || '') + "</div>");
+
+                    eContent.append("<h3>Solution</h3>");
+                    let sFinalText = replaceAll(oBook.congratulations || '', "\n", "<br>");
+                    eContent.append("<div data-id='" + oBook.id + "' class='editable_solution' contenteditable='true'>" + sFinalText + "</div>");
+
+                    // Inline editing handlers
+                    $(".editable_text").off("blur").on("blur", function () {
+                        let that = $(this);
+                        let sText = $(this).html();
+                        sText = replaceAll(sText, "<br>", "\n");
+                        AsyncCallServer("UpdateChapterText", { id: that.attr("data-id"), pretext: sText }, function () {
+                            sText = replaceAll(sText, "\n", "<br>");
+                            that.html(sText);
+                        });
+                    });
+                    $(".editable_help").off("blur").on("blur", function () {
+                        let that = $(this);
+                        let sText = $(this).html();
+                        sText = replaceAll(sText, "<br>", "\n");
+                        AsyncCallServer("UpdateChapterHelp", { id: that.attr("data-id"), help: sText }, function () {
+                            sText = replaceAll(sText, "\n", "<br>");
+                            that.html(sText);
+                        });
+                    });
+                    $(".editable_solution").off("blur").on("blur", function () {
+                        let that = $(this);
+                        let sText = $(this).html();
+                        sText = replaceAll(sText, "<br>", "\n");
+                        AsyncCallServer("UpdateBookSolution", { id: that.attr("data-id"), solution: sText }, function () {
+                            sText = replaceAll(sText, "\n", "<br>");
+                            that.html(sText);
+                        });
+                    });
+                    $(".editable_description").off("blur").on("blur", function () {
+                        let that = $(this);
+                        let sText = $(this).html();
+                        sText = replaceAll(sText, "<br>", "\n");
+                        AsyncCallServer("UpdateBookDescription", { id: that.attr("data-id"), description: sText }, function () {
+                            sText = replaceAll(sText, "\n", "<br>");
+                            that.html(sText);
+                        });
+                    });
+                });
+            });
+        }
+
+        // ── World map ──────────────────────────────────────────────────────
+        function doDisplayWorldMap() {
+            AsyncCallServer("GetChapters", { inBookID: '' }, function (inData) {
+                let oData = JSON.parse(inData.d);
+                doDisplayMap(64.13, -21, oData.Chapters);
+            });
+        }
+
+        function doExport() {
+            AsyncCallServer("Export", {}, function () {
+                alert('Komi\u00f0!');
+            });
+        }
+
+        function doRefreshBooks() {
+            RenderBooks();
+        }
+
+        function doRefreshChapters(inBook, inBookName) {
+            RenderChapters(inBook, inBookName);
+        }
+
+        // ── Render chapters ────────────────────────────────────────────────
+        function RenderChapters(inBookID, inBookName) {
+            let eList = $(".IceList");
+            eList.html("Augnablik ...");
+
+            $(".IceList").attr("data-type", "chapters");
+            $(".IceList").attr("data-book", inBookID);
+            $(".IceList").attr("data-bookname", inBookName);
+            $(".IceNewBook").hide();
+            $(".IceWorldMap").hide();
+            $(".IceCopyBook").show();
+            $(".IceNewChapter").show();
+            $(".IceDump").show();
+            $(".IceGoBack").show();
+            $(".IceActors").show();
+
+            AsyncCallServer("GetChapters", { inBookID: inBookID }, function (inData) {
+                let oData = JSON.parse(inData.d);
+                let dLat = 0.0;
+                let dLon = 0.0;
+
+                if (oData.Chapters.length > 0) {
+                    eList.empty();
+
+                    for (let i = 0; i < oData.Chapters.length; i++) {
+                        let oItem = oData.Chapters[i];
+                        let sCaption = "<span class='IceItemName IceItemChapterName'><b>" + oItem.caption + "</b></span>";
+                        let sLocation = "";
+                        if (oItem.locationgps)
+                            sLocation = "<span class='IceItemNameBadge'>LOC</span>";
+                        let sExperience = "<span class='IceItemName'>" + (oItem.experience || '') + "</span>";
+                        let sIDs = "<span class='IceItemNameBadge'>" + (oItem.flagsneeded || '') + " &#8594 " + (oItem.chapterid || '') + "</span>";
+                        let eItem = $("<div class='IceItem'><span style='margin-right:16px'>" + oItem.id + "</span>" + sCaption + sLocation + sExperience + sIDs + "</div>").appendTo(eList);
+                        eItem.data("object", oItem);
+
+                        if (oItem.locationgps) {
+                            dLat = oItem.locationgps.split(",")[0];
+                            dLon = oItem.locationgps.split(",")[1];
+                        }
+                    }
+
+                    $(".IceList").on("click", ".IceItemChapterName", function () {
+                        let oItem = $(this).parent().data("object");
+                        doInsertUpdateChapter($(this), oItem);
+                    });
+                } else {
+                    eList.html("Ekkert fannst");
+                }
+
+                eList.prepend("<h2>" + inBookName + "</h2>");
+
+                // Chapter tree
+                eList.append("<div class='WorldTree' id='treeid'></div>");
+                doDisplayTree(oData.Chapters);
+
+                // Map
+                eList.append("<br><div class='WorldMap' style='display:none' id='mapid'></div>");
+                doDisplayMap(dLat, dLon, oData.Chapters);
+
+                $(".IceCopyBook").off().on("click", function () {
+                    AsyncCallServer("CopyBook", { inID: inBookID }, function (inData) {
+                        if (JSON.parse(inData.d) == "1")
+                            alert("B\u00f3k afritu\u00f0");
+                        else
+                            alert(inData.d);
+                    });
+                });
+                $(".IceDump").off().on("click", function () {
+                    doDump(inBookID);
+                });
+                $(".IceNewChapter").off().on("click", function () {
+                    doInsertUpdateChapter($(this), { parentid: inBookID });
+                });
+                $(".IceExport").off().on("click", function () {
+                    doExport();
+                });
+                $(".IceActors").off().on("click", function () {
+                    window.open("/static/images/krimmiactors.png", "_blank");
+                });
+                $(".IceRefresh").off().on("click", function () {
+                    let sType = $(".IceList").attr("data-type");
+                    if (sType == "books")
+                        doRefreshBooks();
+                    else
+                        doRefreshChapters($(".IceList").attr("data-book"), $(".IceList").attr("data-bookname"));
+                });
+                $(".IceGoBack").off().on("click", function () {
+                    doRefreshBooks();
+                });
+            });
+        }
+
+        // ── Render books ───────────────────────────────────────────────────
+        function RenderBooks() {
+            let eList = $(".IceList");
+            eList.html("Augnablik ...");
+
+            $(".IceList").attr("data-type", "books");
+            $(".IceList").attr("data-book", "");
+            $(".IceNewBook").show();
+            $(".IceWorldMap").show();
+            $(".IceNewChapter").hide();
+            $(".IceDump").hide();
+            $(".IceCopyBook").hide();
+            $(".IceGoBack").hide();
+            $(".IceActors").hide();
+
+            AsyncCallServer("GetBooks", {}, function (inData) {
+                let oData = JSON.parse(inData.d);
+                if (oData.Books.length > 0) {
+                    eList.empty();
+                    eList.html("<div class='IceList'></div>");
+
+                    for (let i = 0; i < oData.Books.length; i++) {
+                        let oItem = oData.Books[i];
+                        let eItem = $("<div class='IceItem' style='margin-bottom:4px'><span style='margin-right:16px'>" + oItem.id + "</span><span class='IceItemName IceItemBookName'><b>" + oItem.caption + "</b></span>&nbsp;<span style='background-color:lightgray;border-radius:4px;padding:2px'>" + (oItem.location || '') + "</span><span data-bookname='" + oItem.caption + "' data-bookid='" + oItem.id + "' class='IceOpenChapters' style='background-color:green;color:white;padding:2px;border-radius:2px;font-size:80%'>Kaflar</span></div>").appendTo(eList);
+                        eItem.data("object", oItem);
+                    }
+
+                    $(".IceList").on("click", ".IceItemBookName", function () {
+                        let oItem = $(this).parent().data("object");
+                        doInsertUpdateBook($(this), oItem);
+                    });
+                    eList.append("<br><div class='WorldMap' style='display:none' id='mapid'></div>");
+                } else {
+                    eList.html("Ekkert fannst");
+                }
+
+                $(".IceOpenChapters").on("click", function () {
+                    RenderChapters($(this).attr("data-bookid"), $(this).attr("data-bookname"));
+                });
+                $(".IceNewBook").on("click", function () {
+                    doInsertUpdateBook($(this), {});
+                });
+                $(".IceExport").on("click", function () {
+                    doExport();
+                });
+                $(".IceWorldMap").on("click", function () {
+                    doDisplayWorldMap();
+                });
+                $(".IceFetch").off().on("click", function () {
+                    window.open("/api/json", "_blank");
+                });
+                $(".IceRefresh").on("click", function () {
+                    let sType = $(".IceList").attr("data-type");
+                    if (sType == "books")
+                        doRefreshBooks();
+                    else
+                        doRefreshChapters($(".IceList").attr("data-book"), $(".IceList").attr("data-bookname"));
+                });
+            });
+        }
+
+        $(function () {
+            RenderBooks();
+        });
+
+    </script>
+</head>
+<body>
+    <div>
+        <div class="IceButton IceRefresh">S&aelig;kja aftur</div>
+        <div class="IceButton IceNewBook">N&yacute; b&oacute;k</div>
+        <div class="IceButton IceCopyBook">Afrita b&oacute;k</div>
+        <div class="IceButton IceNewChapter">N&yacute;r kafli</div>
+        <div class="IceButton IceGoBack">Tilbaka &iacute; b&aelig;kur</div>
+        <div class="IceButton IceActors">Leikarar</div>
+        <div class="IceButton IceExport">Export</div>
+        <div class="IceButton IceDump">Lesa yfir</div>
+        <div class="IceButton IceFetch">S&aelig;kja g&ouml;gn</div>
+        <div class="IceButton IceWorldMap">Kort</div>
+        <div style="clear:both"></div>
+        <hr />
+        <div class="IceList" data-type="books" data-book="" data-bookname=""></div>
+    </div>
+</body>
+</html>
