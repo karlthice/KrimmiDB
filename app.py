@@ -326,10 +326,11 @@ def build_json_export():
 @app.route("/api/export", methods=["GET"])
 def export_json():
     data = build_json_export()
-    export_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Books.json")
-    with open(export_path, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False)
-    return jsonify("1")
+    return Response(
+        json.dumps(data, ensure_ascii=False),
+        mimetype="application/json",
+        headers={"Content-Disposition": "attachment; filename=Books.json"},
+    )
 
 
 @app.route("/api/json", methods=["GET"])
@@ -339,9 +340,6 @@ def get_json():
         json.dumps(data, ensure_ascii=False),
         mimetype="application/json",
     )
-
-
-import os
 
 if __name__ == "__main__":
     init_db()

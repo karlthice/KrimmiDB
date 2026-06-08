@@ -512,9 +512,7 @@
         }
 
         function doExport() {
-            AsyncCallServer("Export", {}, function () {
-                alert('Komi\u00f0!');
-            });
+            window.location = '/api/export';
         }
 
         function doRefreshBooks() {
